@@ -6,7 +6,21 @@
     <title>Мой Wishlist - Вкусные подарки</title>
     <link rel="icon" href="фавиконы/home.jpg" type="image/webp">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/food.css">
+    <link rel="stylesheet" href="css/wildberries.css">
+    <style>
+        .delete-btn {
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -36,9 +50,10 @@
                             <th width="150px">Где купить</th>
                             <th>Описание</th>
                             <th width="220px">Аренда</th>
+                            <th width="100px">Действия</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="wishlist-table-body">
                         <!-- Данные будут загружаться из localStorage -->
                     </tbody>
                 </table>
@@ -48,12 +63,12 @@
                 <h3>Добавить новый подарок</h3>
                 <form id="add-food-item">
                     <div class="form-row">
-                        <input type="text" placeholder="Название" required>
-                        <input type="number" placeholder="Цена" required>
+                        <input type="text" id="item-name" placeholder="Название" required>
+                        <input type="number" id="item-price" placeholder="Цена" required>
                     </div>
                     <div class="form-row">
-                        <input type="text" placeholder="Где купить">
-                        <textarea placeholder="Подробное описание"></textarea>
+                        <input type="text" id="item-store" placeholder="Где купить">
+                        <textarea id="item-description" placeholder="Подробное описание"></textarea>
                     </div>
                     <button type="submit" class="submit-btn">Добавить в список</button>
                 </form>
@@ -65,6 +80,123 @@
         <p>Спасибо, что хотите порадовать меня подарком!</p>
     </footer>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Загрузка данных из localStorage при загрузке страницы
+            loadWishlistItems();
+            
+            // Обработчик формы добавления нового элемента
+            document.getElementById('add-food-item').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Получаем значения из формы
+                const name = document.getElementById('item-name').value;
+                const price = document.getElementById('item-price').value;
+                const store = document.getElementById('item-store').value;
+                const description = document.getElementById('item-description').value;
+                
+                // Создаем новый элемент списка желаний
+                const newItem = {
+                    name,
+                    price,
+                    store,
+                    description,
+                    rented: false,
+                    renter: ''
+                };
+                
+                // Добавляем элемент в список
+                addWishlistItem(newItem);
+                
+                // Очищаем форму
+                this.reset();
+            });
+        });
+        
+        // Функция для загрузки элементов из localStorage
+        function loadWishlistItems() {
+            const wishlistItems = JSON.parse(localStorage.getItem('foodWishlist')) || [];
+            const tableBody = document.getElementById('wishlist-table-body');
+            
+            tableBody.innerHTML = ''; // Очищаем таблицу перед загрузкой
+            
+            wishlistItems.forEach(item => {
+                addItemToTable(item);
+            });
+        }
+        
+        // Функция для добавления нового элемента в список и сохранения в localStorage
+        function addWishlistItem(item) {
+            const wishlistItems = JSON.parse(localStorage.getItem('foodWishlist')) || [];
+            wishlistItems.push(item);
+            localStorage.setItem('foodWishlist', JSON.stringify(wishlistItems));
+            
+            addItemToTable(item);
+        }
+        
+        // Функция для удаления элемента из списка
+        function deleteWishlistItem(index) {
+            let wishlistItems = JSON.parse(localStorage.getItem('foodWishlist')) || [];
+            wishlistItems.splice(index, 1);
+            localStorage.setItem('foodWishlist', JSON.stringify(wishlistItems));
+            
+            // Перезагружаем список
+            loadWishlistItems();
+        }
+        
+        // Функция для добавления элемента в таблицу
+        function addItemToTable(item, index) {
+            const tableBody = document.getElementById('wishlist-table-body');
+            const newRow = document.createElement('tr');
+            
+            newRow.innerHTML = `
+                <td><input type="checkbox"></td>
+                <td>${item.name}</td>
+                <td>${item.price} ₽</td>
+                <td>${item.store || ''}</td>
+                <td>${item.description || ''}</td>
+                <td>
+                    <select class="rent-select">
+                        <option value="">Не арендован</option>
+                        <option value="mom" ${item.renter === 'mom' ? 'selected' : ''}>Мама</option>
+                        <option value="dad" ${item.renter === 'dad' ? 'selected' : ''}>Папа</option>
+                        <option value="sister" ${item.renter === 'sister' ? 'selected' : ''}>Сестра</option>
+                        <option value="brother" ${item.renter === 'brother' ? 'selected' : ''}>Брат</option>
+                        <option value="friend" ${item.renter === 'friend' ? 'selected' : ''}>Друг</option>
+                    </select>
+                </td>
+                <td>
+                    <button class="delete-btn" data-index="${index}">Удалить</button>
+                </td>
+            `;
+            
+            // Добавляем обработчик изменения статуса аренды
+            const rentSelect = newRow.querySelector('.rent-select');
+            rentSelect.addEventListener('change', function() {
+                updateRentStatus(index, this.value);
+            });
+            
+            // Добавляем обработчик для кнопки удаления
+            const deleteBtn = newRow.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', function() {
+                if (confirm('Вы уверены, что хотите удалить этот предмет из списка?')) {
+                    deleteWishlistItem(parseInt(this.getAttribute('data-index')));
+                }
+            });
+            
+            tableBody.appendChild(newRow);
+        }
+        
+        // Функция для обновления статуса аренды
+        function updateRentStatus(index, renter) {
+            const wishlistItems = JSON.parse(localStorage.getItem('foodWishlist')) || [];
+            if (wishlistItems[index]) {
+                wishlistItems[index].renter = renter;
+                wishlistItems[index].rented = !!renter;
+                localStorage.setItem('foodWishlist', JSON.stringify(wishlistItems));
+            }
+        }
+    </script>
     <script src="js/script.js"></script>
     <script src="js/rent-system.js"></script>
 </body>
