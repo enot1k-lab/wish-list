@@ -7,6 +7,20 @@
     <link rel="icon" href="фавиконы/home.jpg" type="image/webp">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/wildberries.css">
+    <style>
+        .delete-btn {
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -37,6 +51,7 @@
                             <th width="150px">Ссылка</th>
                             <th>Комментарий</th>
                             <th width="220px">Аренда</th>
+                            <th width="100px">Действия</th>
                         </tr>
                     </thead>
                     <tbody id="wishlist-table-body">
@@ -123,6 +138,16 @@
             addItemToTable(item);
         }
         
+        // Функция для удаления элемента из списка
+        function deleteWishlistItem(article) {
+            let wishlistItems = JSON.parse(localStorage.getItem('wildberriesWishlist')) || [];
+            wishlistItems = wishlistItems.filter(item => item.article !== article);
+            localStorage.setItem('wildberriesWishlist', JSON.stringify(wishlistItems));
+            
+            // Перезагружаем список
+            loadWishlistItems();
+        }
+        
         // Функция для добавления элемента в таблицу
         function addItemToTable(item) {
             const tableBody = document.getElementById('wishlist-table-body');
@@ -145,12 +170,23 @@
                         <option value="friend" ${item.renter === 'friend' ? 'selected' : ''}>Друг</option>
                     </select>
                 </td>
+                <td>
+                    <button class="delete-btn" data-article="${item.article}">Удалить</button>
+                </td>
             `;
             
             // Добавляем обработчик изменения статуса аренды
             const rentSelect = newRow.querySelector('.rent-select');
             rentSelect.addEventListener('change', function() {
                 updateRentStatus(item.article, this.value);
+            });
+            
+            // Добавляем обработчик для кнопки удаления
+            const deleteBtn = newRow.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', function() {
+                if (confirm('Вы уверены, что хотите удалить этот предмет из списка?')) {
+                    deleteWishlistItem(this.getAttribute('data-article'));
+                }
             });
             
             tableBody.appendChild(newRow);
