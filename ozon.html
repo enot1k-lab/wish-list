@@ -7,6 +7,30 @@
     <link rel="icon" href="фавиконы/home.jpg" type="image/webp">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/ozon.css">
+    <style>
+        .delete-btn {
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+        .priority-high {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+        .priority-medium {
+            color: #ffa000;
+        }
+        .priority-low {
+            color: #689f38;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -37,9 +61,10 @@
                             <th width="150px">Ссылка</th>
                             <th width="100px">Приоритет</th>
                             <th width="220px">Аренда</th>
+                            <th width="100px">Действия</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="wishlist-table-body">
                         <!-- Данные будут загружаться из localStorage -->
                     </tbody>
                 </table>
@@ -49,15 +74,15 @@
                 <h3>Добавить новый подарок</h3>
                 <form id="add-ozon-item">
                     <div class="form-row">
-                        <input type="text" placeholder="Название" required>
-                        <input type="number" placeholder="Цена" required>
+                        <input type="text" id="item-name" placeholder="Название" required>
+                        <input type="number" id="item-price" placeholder="Цена" required>
                     </div>
                     <div class="form-row">
-                        <input type="text" placeholder="Артикул" required>
-                        <input type="url" placeholder="Ссылка на товар" required>
+                        <input type="text" id="item-article" placeholder="Артикул" required>
+                        <input type="url" id="item-url" placeholder="Ссылка на товар" required>
                     </div>
                     <div class="form-row">
-                        <select>
+                        <select id="item-priority">
                             <option value="high">Высокий приоритет</option>
                             <option value="medium" selected>Средний приоритет</option>
                             <option value="low">Низкий приоритет</option>
@@ -73,6 +98,136 @@
         <p>Спасибо, что хотите порадовать меня подарком!</p>
     </footer>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Загрузка данных из localStorage при загрузке страницы
+            loadWishlistItems();
+            
+            // Обработчик формы добавления нового элемента
+            document.getElementById('add-ozon-item').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Получаем значения из формы
+                const name = document.getElementById('item-name').value;
+                const price = document.getElementById('item-price').value;
+                const article = document.getElementById('item-article').value;
+                const url = document.getElementById('item-url').value;
+                const priority = document.getElementById('item-priority').value;
+                
+                // Создаем новый элемент списка желаний
+                const newItem = {
+                    name,
+                    price,
+                    article,
+                    url,
+                    priority,
+                    rented: false,
+                    renter: ''
+                };
+                
+                // Добавляем элемент в список
+                addWishlistItem(newItem);
+                
+                // Очищаем форму
+                this.reset();
+            });
+        });
+        
+        // Функция для загрузки элементов из localStorage
+        function loadWishlistItems() {
+            const wishlistItems = JSON.parse(localStorage.getItem('ozonWishlist')) || [];
+            const tableBody = document.getElementById('wishlist-table-body');
+            
+            tableBody.innerHTML = ''; // Очищаем таблицу перед загрузкой
+            
+            wishlistItems.forEach(item => {
+                addItemToTable(item);
+            });
+        }
+        
+        // Функция для добавления нового элемента в список и сохранения в localStorage
+        function addWishlistItem(item) {
+            const wishlistItems = JSON.parse(localStorage.getItem('ozonWishlist')) || [];
+            wishlistItems.push(item);
+            localStorage.setItem('ozonWishlist', JSON.stringify(wishlistItems));
+            
+            addItemToTable(item);
+        }
+        
+        // Функция для удаления элемента из списка
+        function deleteWishlistItem(article) {
+            let wishlistItems = JSON.parse(localStorage.getItem('ozonWishlist')) || [];
+            wishlistItems = wishlistItems.filter(item => item.article !== article);
+            localStorage.setItem('ozonWishlist', JSON.stringify(wishlistItems));
+            
+            // Перезагружаем список
+            loadWishlistItems();
+        }
+        
+        // Функция для добавления элемента в таблицу
+        function addItemToTable(item) {
+            const tableBody = document.getElementById('wishlist-table-body');
+            const newRow = document.createElement('tr');
+            
+            // Получаем текст приоритета
+            let priorityText = '';
+            switch(item.priority) {
+                case 'high': priorityText = 'Высокий'; break;
+                case 'medium': priorityText = 'Средний'; break;
+                case 'low': priorityText = 'Низкий'; break;
+            }
+            
+            newRow.innerHTML = `
+                <td><input type="checkbox"></td>
+                <td>${item.name}</td>
+                <td>${item.price} ₽</td>
+                <td>${item.article}</td>
+                <td><a href="${item.url}" target="_blank">Открыть</a></td>
+                <td class="priority-${item.priority}">${priorityText}</td>
+                <td>
+                    <select class="rent-select">
+                        <option value="">Не арендован</option>
+                        <option value="mom" ${item.renter === 'mom' ? 'selected' : ''}>Мама</option>
+                        <option value="dad" ${item.renter === 'dad' ? 'selected' : ''}>Папа</option>
+                        <option value="sister" ${item.renter === 'sister' ? 'selected' : ''}>Сестра</option>
+                        <option value="brother" ${item.renter === 'brother' ? 'selected' : ''}>Брат</option>
+                        <option value="friend" ${item.renter === 'friend' ? 'selected' : ''}>Друг</option>
+                    </select>
+                </td>
+                <td>
+                    <button class="delete-btn" data-article="${item.article}">Удалить</button>
+                </td>
+            `;
+            
+            // Добавляем обработчик изменения статуса аренды
+            const rentSelect = newRow.querySelector('.rent-select');
+            rentSelect.addEventListener('change', function() {
+                updateRentStatus(item.article, this.value);
+            });
+            
+            // Добавляем обработчик для кнопки удаления
+            const deleteBtn = newRow.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', function() {
+                if (confirm('Вы уверены, что хотите удалить этот предмет из списка?')) {
+                    deleteWishlistItem(this.getAttribute('data-article'));
+                }
+            });
+            
+            tableBody.appendChild(newRow);
+        }
+        
+        // Функция для обновления статуса аренды
+        function updateRentStatus(article, renter) {
+            const wishlistItems = JSON.parse(localStorage.getItem('ozonWishlist')) || [];
+            const itemIndex = wishlistItems.findIndex(item => item.article === article);
+            
+            if (itemIndex !== -1) {
+                wishlistItems[itemIndex].renter = renter;
+                wishlistItems[itemIndex].rented = !!renter;
+                localStorage.setItem('ozonWishlist', JSON.stringify(wishlistItems));
+            }
+        }
+    </script>
     <script src="js/script.js"></script>
     <script src="js/rent-system.js"></script>
 </body>
