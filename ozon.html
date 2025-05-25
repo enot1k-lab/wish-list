@@ -6,7 +6,7 @@
     <title>Мой Wishlist - OZON</title>
     <link rel="icon" href="фавиконы/home.jpg" type="image/webp">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/ozon.css">
+    <link rel="stylesheet" href="css/wildberries.css">
     <style>
         .delete-btn {
             background-color: #ff4444;
@@ -19,16 +19,6 @@
         }
         .delete-btn:hover {
             background-color: #cc0000;
-        }
-        .priority-high {
-            color: #d32f2f;
-            font-weight: bold;
-        }
-        .priority-medium {
-            color: #ffa000;
-        }
-        .priority-low {
-            color: #689f38;
         }
     </style>
 </head>
@@ -59,7 +49,7 @@
                             <th width="120px">Цена</th>
                             <th width="120px">Артикул</th>
                             <th width="150px">Ссылка</th>
-                            <th width="100px">Приоритет</th>
+                            <th>Комментарий</th>
                             <th width="220px">Аренда</th>
                             <th width="100px">Действия</th>
                         </tr>
@@ -81,13 +71,7 @@
                         <input type="text" id="item-article" placeholder="Артикул" required>
                         <input type="url" id="item-url" placeholder="Ссылка на товар" required>
                     </div>
-                    <div class="form-row">
-                        <select id="item-priority">
-                            <option value="high">Высокий приоритет</option>
-                            <option value="medium" selected>Средний приоритет</option>
-                            <option value="low">Низкий приоритет</option>
-                        </select>
-                    </div>
+                    <textarea id="item-comment" placeholder="Дополнительные пожелания"></textarea>
                     <button type="submit" class="submit-btn">Добавить в список</button>
                 </form>
             </div>
@@ -112,7 +96,7 @@
                 const price = document.getElementById('item-price').value;
                 const article = document.getElementById('item-article').value;
                 const url = document.getElementById('item-url').value;
-                const priority = document.getElementById('item-priority').value;
+                const comment = document.getElementById('item-comment').value;
                 
                 // Создаем новый элемент списка желаний
                 const newItem = {
@@ -120,7 +104,7 @@
                     price,
                     article,
                     url,
-                    priority,
+                    comment,
                     rented: false,
                     renter: ''
                 };
@@ -169,21 +153,13 @@
             const tableBody = document.getElementById('wishlist-table-body');
             const newRow = document.createElement('tr');
             
-            // Получаем текст приоритета
-            let priorityText = '';
-            switch(item.priority) {
-                case 'high': priorityText = 'Высокий'; break;
-                case 'medium': priorityText = 'Средний'; break;
-                case 'low': priorityText = 'Низкий'; break;
-            }
-            
             newRow.innerHTML = `
                 <td><input type="checkbox"></td>
                 <td>${item.name}</td>
                 <td>${item.price} ₽</td>
                 <td>${item.article}</td>
                 <td><a href="${item.url}" target="_blank">Открыть</a></td>
-                <td class="priority-${item.priority}">${priorityText}</td>
+                <td>${item.comment || ''}</td>
                 <td>
                     <select class="rent-select">
                         <option value="">Не арендован</option>
