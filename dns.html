@@ -6,7 +6,24 @@
     <title>Мой Wishlist - DNS</title>
     <link rel="icon" href="фавиконы/home.jpg" type="image/webp">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/dns.css">
+    <link rel="stylesheet" href="css/wildberries.css">
+    <style>
+        .delete-btn {
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+        .in-stock { color: #689f38; font-weight: bold; }
+        .preorder { color: #ffa000; }
+        .out-of-stock { color: #d32f2f; }
+    </style>
 </head>
 <body>
     <header>
@@ -37,9 +54,10 @@
                             <th width="150px">Ссылка</th>
                             <th width="120px">Наличие</th>
                             <th width="220px">Аренда</th>
+                            <th width="100px">Действия</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="wishlist-table-body">
                         <!-- Данные будут загружаться из localStorage -->
                     </tbody>
                 </table>
@@ -49,15 +67,15 @@
                 <h3>Добавить новый подарок</h3>
                 <form id="add-dns-item">
                     <div class="form-row">
-                        <input type="text" placeholder="Название" required>
-                        <input type="number" placeholder="Цена" required>
+                        <input type="text" id="item-name" placeholder="Название" required>
+                        <input type="number" id="item-price" placeholder="Цена" required>
                     </div>
                     <div class="form-row">
-                        <input type="text" placeholder="Код товара" required>
-                        <input type="url" placeholder="Ссылка на товар" required>
+                        <input type="text" id="item-code" placeholder="Код товара" required>
+                        <input type="url" id="item-url" placeholder="Ссылка на товар" required>
                     </div>
                     <div class="form-row">
-                        <select>
+                        <select id="item-availability">
                             <option value="in-stock">В наличии</option>
                             <option value="preorder">Под заказ</option>
                             <option value="out-of-stock">Нет в наличии</option>
@@ -73,6 +91,134 @@
         <p>Спасибо, что хотите порадовать меня подарком!</p>
     </footer>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Загрузка данных из localStorage при загрузке страницы
+            loadWishlistItems();
+            
+            // Обработчик формы добавления нового элемента
+            document.getElementById('add-dns-item').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Получаем значения из формы
+                const name = document.getElementById('item-name').value;
+                const price = document.getElementById('item-price').value;
+                const code = document.getElementById('item-code').value;
+                const url = document.getElementById('item-url').value;
+                const availability = document.getElementById('item-availability').value;
+                
+                // Создаем новый элемент списка желаний
+                const newItem = {
+                    name,
+                    price,
+                    code,
+                    url,
+                    availability,
+                    rented: false,
+                    renter: ''
+                };
+                
+                // Добавляем элемент в список
+                addWishlistItem(newItem);
+                
+                // Очищаем форму
+                this.reset();
+            });
+        });
+        
+        // Функция для загрузки элементов из localStorage
+        function loadWishlistItems() {
+            const wishlistItems = JSON.parse(localStorage.getItem('dnsWishlist')) || [];
+            const tableBody = document.getElementById('wishlist-table-body');
+            
+            tableBody.innerHTML = ''; // Очищаем таблицу перед загрузкой
+            
+            wishlistItems.forEach((item, index) => {
+                addItemToTable(item, index);
+            });
+        }
+        
+        // Функция для добавления нового элемента в список и сохранения в localStorage
+        function addWishlistItem(item) {
+            const wishlistItems = JSON.parse(localStorage.getItem('dnsWishlist')) || [];
+            wishlistItems.push(item);
+            localStorage.setItem('dnsWishlist', JSON.stringify(wishlistItems));
+            
+            addItemToTable(item, wishlistItems.length - 1);
+        }
+        
+        // Функция для удаления элемента из списка
+        function deleteWishlistItem(index) {
+            let wishlistItems = JSON.parse(localStorage.getItem('dnsWishlist')) || [];
+            wishlistItems.splice(index, 1);
+            localStorage.setItem('dnsWishlist', JSON.stringify(wishlistItems));
+            
+            // Перезагружаем список
+            loadWishlistItems();
+        }
+        
+        // Функция для добавления элемента в таблицу
+        function addItemToTable(item, index) {
+            const tableBody = document.getElementById('wishlist-table-body');
+            const newRow = document.createElement('tr');
+            
+            // Получаем текст наличия
+            let availabilityText = '';
+            switch(item.availability) {
+                case 'in-stock': availabilityText = 'В наличии'; break;
+                case 'preorder': availabilityText = 'Под заказ'; break;
+                case 'out-of-stock': availabilityText = 'Нет в наличии'; break;
+            }
+            
+            newRow.innerHTML = `
+                <td><input type="checkbox"></td>
+                <td>${item.name}</td>
+                <td>${item.price} ₽</td>
+                <td>${item.code}</td>
+                <td><a href="${item.url}" target="_blank">Открыть</a></td>
+                <td class="${item.availability}">${availabilityText}</td>
+                <td>
+                    <select class="rent-select">
+                        <option value="">Не арендован</option>
+                        <option value="mom" ${item.renter === 'mom' ? 'selected' : ''}>Мама</option>
+                        <option value="dad" ${item.renter === 'dad' ? 'selected' : ''}>Папа</option>
+                        <option value="sister" ${item.renter === 'sister' ? 'selected' : ''}>Сестра</option>
+                        <option value="brother" ${item.renter === 'brother' ? 'selected' : ''}>Брат</option>
+                        <option value="friend" ${item.renter === 'friend' ? 'selected' : ''}>Друг</option>
+                    </select>
+                </td>
+                <td>
+                    <button class="delete-btn" data-index="${index}">Удалить</button>
+                </td>
+            `;
+            
+            // Добавляем обработчик изменения статуса аренды
+            const rentSelect = newRow.querySelector('.rent-select');
+            rentSelect.addEventListener('change', function() {
+                updateRentStatus(index, this.value);
+            });
+            
+            // Добавляем обработчик для кнопки удаления
+            const deleteBtn = newRow.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', function() {
+                if (confirm('Вы уверены, что хотите удалить этот предмет из списка?')) {
+                    deleteWishlistItem(parseInt(this.getAttribute('data-index')));
+                }
+            });
+            
+            tableBody.appendChild(newRow);
+        }
+        
+        // Функция для обновления статуса аренды
+        function updateRentStatus(index, renter) {
+            const wishlistItems = JSON.parse(localStorage.getItem('dnsWishlist')) || [];
+            if (wishlistItems[index]) {
+                wishlistItems[index].renter = renter;
+                wishlistItems[index].rented = !!renter;
+                localStorage.setItem('dnsWishlist', JSON.stringify(wishlistItems));
+            }
+        }
+    </script>
     <script src="js/script.js"></script>
     <script src="js/rent-system.js"></script>
 </body>
