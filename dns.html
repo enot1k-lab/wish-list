@@ -7,6 +7,9 @@
     <link rel="icon" href="фавиконы/home.jpg" type="image/webp">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/wildberries.css">
+    <!-- Добавляем Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
     <style>
         .delete-btn {
             background-color: #ff4444;
@@ -92,8 +95,23 @@
     </footer>
 
     <script>
+        // Инициализация Firebase
+        const firebaseConfig = {
+            apiKey: "ВАШ_API_KEY",
+            authDomain: "ВАШ_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://ВАШ_PROJECT_ID.firebaseio.com",
+            projectId: "ВАШ_PROJECT_ID",
+            storageBucket: "ВАШ_PROJECT_ID.appspot.com",
+            messagingSenderId: "ВАШ_SENDER_ID",
+            appId: "ВАШ_APP_ID"
+        };
+        
+        // Инициализируем Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
         document.addEventListener('DOMContentLoaded', function() {
-            // Загрузка данных из localStorage при загрузке страницы
+            // Загрузка данных из Firebase при загрузке страницы
             loadWishlistItems();
             
             // Обработчик формы добавления нового элемента
@@ -115,10 +133,11 @@
                     url,
                     availability,
                     rented: false,
-                    renter: ''
+                    renter: '',
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
                 };
                 
-                // Добавляем элемент в список
+                // Добавляем элемент в Firebase
                 addWishlistItem(newItem);
                 
                 // Очищаем форму
@@ -126,39 +145,55 @@
             });
         });
         
-        // Функция для загрузки элементов из localStorage
+        // Функция для загрузки элементов из Firebase
         function loadWishlistItems() {
-            const wishlistItems = JSON.parse(localStorage.getItem('dnsWishlist')) || [];
-            const tableBody = document.getElementById('wishlist-table-body');
+            const wishlistRef = database.ref('wishlists/dns');
             
-            tableBody.innerHTML = ''; // Очищаем таблицу перед загрузкой
-            
-            wishlistItems.forEach((item, index) => {
-                addItemToTable(item, index);
+            wishlistRef.on('value', (snapshot) => {
+                const wishlistItems = snapshot.val() || {};
+                const tableBody = document.getElementById('wishlist-table-body');
+                
+                tableBody.innerHTML = ''; // Очищаем таблицу перед загрузкой
+                
+                // Преобразуем объект в массив и сортируем по timestamp
+                const itemsArray = Object.entries(wishlistItems)
+                    .map(([id, item]) => ({ id, ...item }))
+                    .sort((a, b) => b.timestamp - a.timestamp);
+                
+                itemsArray.forEach((item) => {
+                    addItemToTable(item);
+                });
             });
         }
         
-        // Функция для добавления нового элемента в список и сохранения в localStorage
+        // Функция для добавления нового элемента в Firebase
         function addWishlistItem(item) {
-            const wishlistItems = JSON.parse(localStorage.getItem('dnsWishlist')) || [];
-            wishlistItems.push(item);
-            localStorage.setItem('dnsWishlist', JSON.stringify(wishlistItems));
-            
-            addItemToTable(item, wishlistItems.length - 1);
+            const wishlistRef = database.ref('wishlists/dns');
+            const newItemRef = wishlistRef.push();
+            newItemRef.set(item);
         }
         
-        // Функция для удаления элемента из списка
-        function deleteWishlistItem(index) {
-            let wishlistItems = JSON.parse(localStorage.getItem('dnsWishlist')) || [];
-            wishlistItems.splice(index, 1);
-            localStorage.setItem('dnsWishlist', JSON.stringify(wishlistItems));
+        // Функция для удаления элемента из Firebase
+        function deleteWishlistItem(itemId) {
+            if (confirm('Вы уверены, что хотите удалить этот предмет из списка?')) {
+                const itemRef = database.ref(`wishlists/dns/${itemId}`);
+                itemRef.remove();
+            }
+        }
+        
+        // Функция для обновления статуса аренды в Firebase
+        function updateRentStatus(itemId, renter) {
+            const updates = {
+                renter: renter,
+                rented: !!renter
+            };
             
-            // Перезагружаем список
-            loadWishlistItems();
+            const itemRef = database.ref(`wishlists/dns/${itemId}`);
+            itemRef.update(updates);
         }
         
         // Функция для добавления элемента в таблицу
-        function addItemToTable(item, index) {
+        function addItemToTable(item) {
             const tableBody = document.getElementById('wishlist-table-body');
             const newRow = document.createElement('tr');
             
@@ -178,7 +213,7 @@
                 <td><a href="${item.url}" target="_blank">Открыть</a></td>
                 <td class="${item.availability}">${availabilityText}</td>
                 <td>
-                    <select class="rent-select">
+                    <select class="rent-select" data-id="${item.id}">
                         <option value="">Не арендован</option>
                         <option value="mom" ${item.renter === 'mom' ? 'selected' : ''}>Мама</option>
                         <option value="dad" ${item.renter === 'dad' ? 'selected' : ''}>Папа</option>
@@ -188,35 +223,23 @@
                     </select>
                 </td>
                 <td>
-                    <button class="delete-btn" data-index="${index}">Удалить</button>
+                    <button class="delete-btn" data-id="${item.id}">Удалить</button>
                 </td>
             `;
             
             // Добавляем обработчик изменения статуса аренды
             const rentSelect = newRow.querySelector('.rent-select');
             rentSelect.addEventListener('change', function() {
-                updateRentStatus(index, this.value);
+                updateRentStatus(this.getAttribute('data-id'), this.value);
             });
             
             // Добавляем обработчик для кнопки удаления
             const deleteBtn = newRow.querySelector('.delete-btn');
             deleteBtn.addEventListener('click', function() {
-                if (confirm('Вы уверены, что хотите удалить этот предмет из списка?')) {
-                    deleteWishlistItem(parseInt(this.getAttribute('data-index')));
-                }
+                deleteWishlistItem(this.getAttribute('data-id'));
             });
             
             tableBody.appendChild(newRow);
-        }
-        
-        // Функция для обновления статуса аренды
-        function updateRentStatus(index, renter) {
-            const wishlistItems = JSON.parse(localStorage.getItem('dnsWishlist')) || [];
-            if (wishlistItems[index]) {
-                wishlistItems[index].renter = renter;
-                wishlistItems[index].rented = !!renter;
-                localStorage.setItem('dnsWishlist', JSON.stringify(wishlistItems));
-            }
         }
     </script>
     <script src="js/script.js"></script>
